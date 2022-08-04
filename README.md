@@ -4,7 +4,7 @@ This is a Tampermonkey/Greasemonkey/etc. script
 
 Create a new script -> paste this script -> save
 
-go to a dogs page to extract its data, lvlups, event nights and the stats.
+go to a dogs page to automatically collect its data, lvlups, event nights and the stats.
 
 if you go to the overview page there will be all the collected data in csv format in the console
 also all dog names that are not 100% taken care off will be thrown into the console aswell
