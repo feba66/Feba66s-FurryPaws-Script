@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Feba66's Script
 // @namespace    http://tampermonkey.net/
-// @version      1
+// @version      1.1
 // @description  Collect loads of information
 // @author       feba66 aka fp: Felix#1631601 aka dc: feba66lap#7402
 // @match        https://www.furry-paws.com/kennel/overview
@@ -13,9 +13,9 @@
 (function () {
     'use strict';
     let enableServerConnection = true;
-    let connectionSettleTime = 200;
+    let connectionSettleTime = 300;
     if(enableServerConnection){
-        var ws = new WebSocket("ws://tkkg.dyndns.biz:7887")
+        var ws = new WebSocket("ws://localhost:7887")//tkkg.dyndns.biz
     }
     //Structs
     const KennelDog = {
@@ -198,37 +198,28 @@
                             }
                         }
                         
-                        if (split.length == 4) {
-                            if (split[0].indexOf("entered in") != -1) {
-                                console.log("normal night!");
-                                correct = true;
-                                ev = 0;
-                            }
+                        if (n.innerText.indexOf("completely focused today") != -1) {
+                            console.log("focused night!")
+                            correct = true;
+                            ev = 1;
                         }
-                        else if (split.length == 5) {
-                            if (split[1].indexOf("completely focused today") != -1) {
-                                console.log("focused night!")
-                                correct = true;
-                                ev = 1;
-                            }
-                            else if (split[1].indexOf("lacks focus today") != -1) {
-                                console.log("unfocused night!")
-                                correct = true;
-                                ev = -1;
-                            }
+                        else if (n.innerText.indexOf("lacks focus today") != -1) {
+                            console.log("unfocused night!")
+                            correct = true;
+                            ev = -1;
                         }
+                        else if (n.innerText.indexOf("entered in") != -1) {
+                            console.log("normal night!");
+                            correct = true;
+                            ev = 0;
+                        }
+                        
                         if (correct) {
-                            let comp = split[0].split("entered in")[1];
-                            let indx = 0;
-                            if (comp.indexOf(" ") == 0) {
-                                indx = comp.indexOf(" ", comp.indexOf(" ") + 1) + 1
-                            }
-                            else
-                                indx = comp.indexOf(" ");
-                            comp = comp.substring(indx)
-                            let tmp = comp.split(" ");
-                            let sport = comp.substring(0, comp.indexOf(tmp[tmp.length - 2]) - 1)
-                            sport = sport.replace(" Hunting","").replace(" Musical","")
+                            let comp = n.innerText.split("entered in")[1];
+                            comp = comp.substring(1,comp.indexOf(" competitions. You"))
+                            comp = comp.substring(comp.indexOf(" ")+1)
+                            comp = comp.substring(0,comp.lastIndexOf(" "))
+                            let sport = comp.replace(" Hunting","").replace(" Musical","")
                             let eventlog = Object.create(eventLog);
                             eventlog.id = id;
                             eventlog.datetime = Date.now()
