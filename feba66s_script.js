@@ -12,6 +12,11 @@
 
 (function () {
     'use strict';
+    let enableServerConnection = false;
+    let connectionSettleTime = 300;
+    if(enableServerConnection){
+        var ws = new WebSocket("ws://localhost:7887")//tkkg.dyndns.biz
+    }
     //Structs
     const KennelDog = {
         id: -1,
@@ -22,7 +27,9 @@
         generation: -1,
         aptitude: "",
         dad: -1,
-        mom: -1
+        mom: -1,
+        owner: -1,
+        age: -1
     }
     const eventLog = {
         id: -1,
@@ -37,8 +44,6 @@
         dogs = {};
     }
 
-
-
     let url = window.location.pathname;
     console.log(url);
     
@@ -50,13 +55,11 @@
         var target = document.querySelector('#dog_response');
         var observer = new MutationObserver(function (mutations) {
             mutations.forEach(function (mutation) {
-                console.log(mutation.type);
-                console.log(mutation);
                 mutation.addedNodes.forEach(n => {
                     if (n.className == "notice") {
                         console.log("notice");
                         let split = n.innerText.split(/[.!]+/g);
-                        let ev = -1;
+                        let ev = -2;
                         let correct = false;
 
                         //dog trained
@@ -103,7 +106,7 @@
                                 else if (element.indexOf("twice as effective") != -1) {
                                     arr[1] = "double"
                                 }
-                                training[i + "-" + oname] = arr[1];
+                                training[i] = oname+"|"+arr[1];
                                 i++;
                             });
                             let trainingEvents = JSON.parse(localStorage.getItem("feba_trainingEvents"));
@@ -114,6 +117,13 @@
                             console.log(training);
                             trainingEvents.push(training)
                             localStorage.setItem("feba_trainingEvents", JSON.stringify(trainingEvents));
+                            if (enableServerConnection){
+                                setTimeout(function(){
+                                    if (url.startsWith("/dog/index/")) {
+                                        ws.send("trainv1;"+training["did"]+";"+training["datetime"] +";"+training["lvl"]+";"+training["0"]+";"+training["1"]+";"+training["2"]+";"+training["3"])
+                                    }
+                                },connectionSettleTime)
+                            }
                         }
                         // dog leveled up
                         else if (n.innerText.indexOf("has gone from Level") != -1) {
@@ -167,7 +177,10 @@
                                         }
                                     }
                                 }
+                                
                             });
+                            var infotable = document.getElementsByClassName("info_table")[0].children[0]
+                            lvlup["age"] = infotable.children[10].childNodes[1].textContent.split(" ")[0];//
                             let lvlupEvents = JSON.parse(localStorage.getItem("feba_lvlupEvents"));
                             if (lvlupEvents == null) {
                                 lvlupEvents = [];
@@ -176,40 +189,37 @@
                             console.log(lvlup);
                             lvlupEvents.push(lvlup)
                             localStorage.setItem("feba_lvlupEvents", JSON.stringify(lvlupEvents));
+                            if (enableServerConnection){
+                                setTimeout(function(){
+                                    if (url.startsWith("/dog/index/")) {
+                                        ws.send("lvlupv1;"+lvlup["did"]+";"+lvlup["datetime"]+";"+lvlup["lvl"]+";"+lvlup["uxp"]+";"+lvlup["agi"]+";"+lvlup["cha"]+";"+lvlup["int"]+";"+lvlup["spd"]+";"+lvlup["stm"]+";"+lvlup["str"]+";"+lvlup["age"])
+                                    }
+                                },connectionSettleTime)
+                            }
                         }
                         
-                        if (split.length == 4) {
-                            if (split[0].indexOf("entered in") != -1) {
-                                console.log("normal night!");
-                                correct = true;
-                                ev = 0;
-                            }
+                        if (n.innerText.indexOf("completely focused today") != -1) {
+                            console.log("focused night!")
+                            correct = true;
+                            ev = 1;
                         }
-                        else if (split.length == 5) {
-                            if (split[1].indexOf("completely focused today") != -1) {
-                                console.log("focused night!")
-                                correct = true;
-                                ev = 1;
-                            }
-                            else if (split[1].indexOf("lacks focus today") != -1) {
-                                console.log("unfocused night!")
-                                correct = true;
-                                ev = -1;
-                            }
+                        else if (n.innerText.indexOf("lacks focus today") != -1) {
+                            console.log("unfocused night!")
+                            correct = true;
+                            ev = -1;
                         }
-                        console.log(split);
+                        else if (n.innerText.indexOf("entered in") != -1) {
+                            console.log("normal night!");
+                            correct = true;
+                            ev = 0;
+                        }
+                        
                         if (correct) {
-                            let comp = split[0].split("entered in")[1];
-                            let indx = 0;
-                            if (comp.indexOf(" ") == 0) {
-                                indx = comp.indexOf(" ", comp.indexOf(" ") + 1) + 1
-                            }
-                            else
-                                indx = comp.indexOf(" ");
-                            comp = comp.substring(indx)
-                            let tmp = comp.split(" ");
-                            let sport = comp.substring(0, comp.indexOf(tmp[tmp.length - 2]) - 1)
-                            console.log(sport);
+                            let comp = n.innerText.split("entered in")[1];
+                            comp = comp.substring(1,comp.indexOf(" competitions. You"))
+                            comp = comp.substring(comp.indexOf(" ")+1)
+                            comp = comp.substring(0,comp.lastIndexOf(" "))
+                            let sport = comp.replace(" Hunting","").replace(" Musical","")
                             let eventlog = Object.create(eventLog);
                             eventlog.id = id;
                             eventlog.datetime = Date.now()
@@ -220,8 +230,15 @@
                                 eventLogs = [];
                             }
                             eventLogs.push(eventlog);
-                            console.log(eventLogs);
+                            console.log(eventlog);
                             localStorage.setItem("feba_eventlog", JSON.stringify(eventLogs));
+                            if (enableServerConnection){
+                                setTimeout(function(){
+                                    if (url.startsWith("/dog/index/")) {
+                                        ws.send("nightv1;"+eventlog.id+";"+eventlog.datetime+";"+eventlog.event+";"+eventlog.title)
+                                    }
+                                },connectionSettleTime)
+                            }
                         }
                     }
                 });
@@ -230,24 +247,35 @@
         var config = { attributes: false, childList: true, characterData: false };
         observer.observe(target, config);
 
-
-
+        var infotable = document.getElementsByClassName("info_table")[0].children[0]
         if (dogs[id] == undefined || true) {
             let dog = Object.create(KennelDog);
-            dog.id = id;
-            dog.genes = document.getElementsByClassName("info_table")[0].children[0].children[16].childNodes[1].textContent.split(" ");
-            dog.fullName = document.getElementsByClassName("info_table")[0].children[0].children[0].childNodes[1].textContent.replace(" (Change)", "");
-            dog.breed = document.getElementsByClassName("info_table")[0].children[0].children[6].childNodes[1].textContent;
-            dog.gender = document.getElementsByClassName("info_table")[0].children[0].children[7].childNodes[1].textContent;
-            dog.generation = document.getElementsByClassName("info_table")[0].children[0].children[13].childNodes[1].textContent;
-            dog.aptitude = document.getElementsByClassName("info_table")[0].children[0].children[17].childNodes[1].textContent.split(", ");
+            dog.id = id;//
+            
+            dog.genes = infotable.children[16].childNodes[1].textContent.split(" ");//
+            dog.fullName = infotable.children[0].childNodes[1].textContent.replace(" (Change)", "").replaceAll(";","_:");//
+            dog.breed = infotable.children[6].childNodes[1].textContent;//
+            dog.gender = infotable.children[7].childNodes[1].textContent;//
+            dog.owner = infotable.children[11].childNodes[1].textContent.split("#")[1].replace(")","");//
+            dog.age = infotable.children[10].childNodes[1].textContent.split(" ")[0];//
+            dog.generation = infotable.children[13].childNodes[1].textContent;//
+            dog.aptitude = infotable.children[17].childNodes[1].textContent.split(", ");//
 
             if (dog.generation > 1) {
-                dog.dad = document.getElementById("tab_history").children[1].children[0].children[3].children[0].children[0].childNodes[1].textContent.split("#")[1];
-                dog.mom = document.getElementById("tab_history").children[1].children[1].children[3].children[0].children[0].childNodes[1].textContent.split("#")[1];
+                var tab_history = document.getElementById("tab_history").children[1]
+                dog.dad = tab_history.children[0].children[3].children[0].children[0].childNodes[1].textContent.split("#")[1];//
+                dog.mom = tab_history.children[1].children[3].children[0].children[0].childNodes[1].textContent.split("#")[1];//
             }
 
             console.log(dog)
+            if (enableServerConnection){
+                setTimeout(function(){
+                    if (url.startsWith("/dog/index/")) {
+                        ws.send("dogv1;"+dog.id+";"+dog.fullName+";"+dog.gender+";"+dog.breed+";"+dog.genes.join("|")+";"+dog.owner+";"+dog.generation+";"+dog.aptitude+";"+dog.dad+";"+dog.mom)
+                    }
+                },connectionSettleTime)
+            }
+
             let name = "|" + dog.genes[14]
             for (let i = dog.genes[14].length; i < 4; i++) {
                 name += "-";
@@ -276,7 +304,6 @@
             let b = dog.genes[16];
             name += "|" + a+"|" + b;
             
-
             console.log(name)
             dogs[dog.id] = dog;
         }
@@ -319,23 +346,14 @@
             st += "\n";
         }
         console.log("lvlupEvents");
-        console.log(st);/*
-        st = "";
-        for (let i = 0; i < eventLogs.length; i++) {
-            st+= eventLogs[i].id+";"+eventLogs[i].datetime+";"+eventLogs[i].event+";"
-            if (eventLogs[i].title!=undefined) {
-                st+=eventLogs[i].title.replace(" Hunting","").replace(" Musical","");
-            }
-            st+="\n";
-        }
-        console.log(st);*/
+        console.log(st);
         console.log("dogs");
         console.log(dogs);
         console.log("dog csv");
         console.log(s);
-
         console.log("dogs that are not 100% taken care off:");
-        let tr = document.getElementsByClassName("info_table")[0].children[0].children
+        var infotable = document.getElementsByClassName("info_table")[0].children[0]
+        let tr = infotable.children
         for (let t of tr) {
             if (t.innerHTML.indexOf("bullet_red") != -1 || t.innerHTML.indexOf("bullet_orange") != -1)
                 console.log(t.children[0].innerText)
