@@ -13,9 +13,9 @@
 (function () {
     'use strict';
     let enableServerConnection = true;
-    let connectionSettleTime = 300;
+    let connectionSettleTime = 500;
     if(enableServerConnection){
-        var ws = new WebSocket("ws://localhost:7887")//tkkg.dyndns.biz
+        var ws = new WebSocket("wss://tkkg.dyndns.biz:7887")//tkkg.dyndns.biz
     }
     //Structs
     const KennelDog = {
