@@ -13,7 +13,7 @@
 (function () {
     'use strict';
     let enableServerConnection = true;
-    let connectionSettleTime = 500;
+    let connectionSettleTime = 700;
     if(enableServerConnection){
         var ws = new WebSocket("wss://tkkg.dyndns.biz:7887")//tkkg.dyndns.biz
     }
@@ -57,76 +57,63 @@
             mutations.forEach(function (mutation) {
                 mutation.addedNodes.forEach(n => {
                     if (n.className == "notice") {
-                        console.log("notice");
+                        console.log(n)
+                        console.log(n.innerText)
                         let split = n.innerText.split(/[.!]+/g);
-                        let ev = -2;
-                        let correct = false;
-
-                        //dog trained
-                        if (n.innerText.indexOf("lost") != -1 && n.innerText.indexOf("Energy") != -1) {
-                            
-                            let training = { "did": id, "lvl": document.getElementsByClassName("var_level")[0].innerText };
-                            let i = 0;
-                            split.forEach(element => {
-                                let oname = "";
-                                let arr = []
-                                let indx = element.indexOf("gained");
-                                if (indx != -1) {
-                                    arr = element.substring(indx).split(" ");
-                                    arr[1] = arr[1].replace("+", "");
-                                    switch (arr[2]) {
-                                        case "Speed":
-                                            oname = "spd";
-                                            break;
-                                        case "Stamina":
-                                            oname = "stm";
-                                            break;
-                                        case "Strength":
-                                            oname = "str";
-                                            break;
-                                        case "Agility":
-                                            oname = "agi";
-                                            break;
-                                        case "Charisma":
-                                            oname = "cha";
-                                            break;
-                                        case "Intelligence":
-                                            oname = "int";
-                                            break;
-                                        case "Training":
-                                            oname = "train";
-                                            break;
-                                        default:
-                                            console.log("ERROR:")
-                                            console.log(element)
-                                            console.log(arr)
-                                            break;
-                                    }
-                                }
-                                else if (element.indexOf("twice as effective") != -1) {
-                                    arr[1] = "double"
-                                }
-                                training[i] = oname+"|"+arr[1];
-                                i++;
-                            });
-                            let trainingEvents = JSON.parse(localStorage.getItem("feba_trainingEvents"));
-                            if (trainingEvents == null) {
-                                trainingEvents = [];
+                        //water
+                        if(n.innerText.indexOf("water bowl has been refilled")!=-1 || n.innerText.indexOf("water bowl is already filled to the brim")!=-1){}
+                        //food
+                        else if(n.innerText.indexOf("You give a serving of")!=-1){}
+                        //play
+                        else if(n.innerText.indexOf("happily returns the toy to you.")!=-1){}
+                        //clean
+                        else if(n.innerText.indexOf("kennel has been cleaned.")!=-1){}
+                        //groom
+                        else if(n.innerText.indexOf("Shiny and soft, your dog's coat is now in perfect condition!")!=-1){}
+                        //compete
+                        else if(n.innerText.indexOf("The competition results will be posted tomorrow!")!=-1){
+                            let ev = -2;
+                            if (n.innerText.indexOf("completely focused today") != -1) {
+                                console.log("focused night!")
+                                ev = 1;
                             }
-                            training["datetime"] = Date.now();
-                            console.log(training);
-                            trainingEvents.push(training)
-                            localStorage.setItem("feba_trainingEvents", JSON.stringify(trainingEvents));
+                            else if (n.innerText.indexOf("lacks focus today") != -1) {
+                                console.log("unfocused night!")
+                                ev = -1;
+                            }
+                            else{
+                                console.log("normal night!");
+                                ev = 0;
+                            }
+                            
+                            let comp = n.innerText.split("entered in")[1];
+                            comp = comp.substring(1,comp.indexOf(" competitions."))
+                            comp = comp.substring(comp.indexOf(" ")+1)
+                            comp = comp.substring(0,comp.lastIndexOf(" "))
+                            //stupid way of fixing the titles
+                            let sport = comp.replace(" Hunting","").replace(" Musical","").replace(" Field","").replace(" Dock","").replace(" Earthdog","").replace(" Scent","").replace(" Water","")
+                            let eventlog = Object.create(eventLog);
+                            eventlog.id = id;
+                            eventlog.datetime = Date.now()
+                            eventlog.event = ev;
+                            eventlog.title = sport;
+                            let eventLogs = JSON.parse(localStorage.getItem("feba_eventlog"));
+                            if (eventLogs == null) {
+                                eventLogs = [];
+                            }
+                            eventLogs.push(eventlog);
+                            console.log(eventlog);
+                            localStorage.setItem("feba_eventlog", JSON.stringify(eventLogs));
                             if (enableServerConnection){
                                 setTimeout(function(){
                                     if (url.startsWith("/dog/index/")) {
-                                        ws.send("trainv1;"+training["did"]+";"+training["datetime"] +";"+training["lvl"]+";"+training["0"]+";"+training["1"]+";"+training["2"]+";"+training["3"])
+                                        ws.send("nightv1;"+eventlog.id+";"+eventlog.datetime+";"+eventlog.event+";"+eventlog.title)
                                     }
                                 },connectionSettleTime)
                             }
                         }
-                        // dog leveled up
-                        else if (n.innerText.indexOf("has gone from Level") != -1) {
+                        //lvlup
+                        else if(n.innerText.indexOf("has gone from Level")!=-1){
                             let lvlup = { "did": id };
                             split.forEach(element => {
                                 let indx = element.indexOf("gained");
@@ -197,49 +184,80 @@
                                 },connectionSettleTime)
                             }
                         }
-                        
-                        if (n.innerText.indexOf("completely focused today") != -1) {
-                            console.log("focused night!")
-                            correct = true;
-                            ev = 1;
-                        }
-                        else if (n.innerText.indexOf("lacks focus today") != -1) {
-                            console.log("unfocused night!")
-                            correct = true;
-                            ev = -1;
-                        }
-                        else if (n.innerText.indexOf("entered in") != -1) {
-                            console.log("normal night!");
-                            correct = true;
-                            ev = 0;
-                        }
-                        
-                        if (correct) {
-                            let comp = n.innerText.split("entered in")[1];
-                            comp = comp.substring(1,comp.indexOf(" competitions. You"))
-                            comp = comp.substring(comp.indexOf(" ")+1)
-                            comp = comp.substring(0,comp.lastIndexOf(" "))
-                            let sport = comp.replace(" Hunting","").replace(" Musical","")
-                            let eventlog = Object.create(eventLog);
-                            eventlog.id = id;
-                            eventlog.datetime = Date.now()
-                            eventlog.event = ev;
-                            eventlog.title = sport;
-                            let eventLogs = JSON.parse(localStorage.getItem("feba_eventlog"));
-                            if (eventLogs == null) {
-                                eventLogs = [];
+                        //train
+                        else if(n.innerText.indexOf("gained ")!=-1){
+                            let training = { "did": id, "lvl": document.getElementsByClassName("var_level")[0].innerText };
+                            let i = 0;
+                            split.forEach(element => {
+                                let oname = "";
+                                let arr = []
+                                let indx = element.indexOf("gained");
+                                if (indx != -1) {
+                                    arr = element.substring(indx).split(" ");
+                                    arr[1] = arr[1].replace("+", "");
+                                    switch (arr[2]) {
+                                        case "Speed":
+                                            oname = "spd";
+                                            break;
+                                        case "Stamina":
+                                            oname = "stm";
+                                            break;
+                                        case "Strength":
+                                            oname = "str";
+                                            break;
+                                        case "Agility":
+                                            oname = "agi";
+                                            break;
+                                        case "Charisma":
+                                            oname = "cha";
+                                            break;
+                                        case "Intelligence":
+                                            oname = "int";
+                                            break;
+                                        case "Training":
+                                            oname = "train";
+                                            break;
+                                        default:
+                                            console.log("ERROR:")
+                                            console.log(element)
+                                            console.log(arr)
+                                            break;
+                                    }
+                                }
+                                else if (element.indexOf("twice as effective") != -1) {
+                                    arr[1] = "double"
+                                }
+                                training[i] = oname+"|"+arr[1];
+                                i++;
+                            });
+                            let trainingEvents = JSON.parse(localStorage.getItem("feba_trainingEvents"));
+                            if (trainingEvents == null) {
+                                trainingEvents = [];
                             }
-                            eventLogs.push(eventlog);
-                            console.log(eventlog);
-                            localStorage.setItem("feba_eventlog", JSON.stringify(eventLogs));
+                            training["datetime"] = Date.now();
+                            console.log(training);
+                            trainingEvents.push(training)
+                            localStorage.setItem("feba_trainingEvents", JSON.stringify(trainingEvents));
                             if (enableServerConnection){
                                 setTimeout(function(){
                                     if (url.startsWith("/dog/index/")) {
-                                        ws.send("nightv1;"+eventlog.id+";"+eventlog.datetime+";"+eventlog.event+";"+eventlog.title)
+                                        ws.send("trainv1;"+training["did"]+";"+training["datetime"] +";"+training["lvl"]+";"+training["0"]+";"+training["1"]+";"+training["2"]+";"+training["3"])
                                     }
                                 },connectionSettleTime)
                             }
                         }
+
+                        //dog trained
+                        /*if (n.innerText.indexOf("lost") != -1 && n.innerText.indexOf("Energy") != -1) {
+                            
+                            
+                        }*/
+                        // dog leveled up
+                        /*else if (n.innerText.indexOf("has gone from Level") != -1) {
+                            
+                        }*/
+                        
+                        
                     }
                 });
             });
