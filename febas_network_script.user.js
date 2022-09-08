@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Feba66's Script
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Collect loads of information
 // @author       feba66 aka fp: Felix#1631601 aka dc: feba66lap#7402
 // @downloadURL  https://github.com/feba66/Feba66s-FurryPaws-Script/raw/main/febas_network_script.user.js
@@ -15,7 +15,7 @@
 (function () {
     'use strict';
     let enableServerConnection = true;
-    let connectionSettleTime = 700;
+    let connectionSettleTime = 500;
     if(enableServerConnection){
         var ws = new WebSocket("wss://tkkg.dyndns.biz:7887")//tkkg.dyndns.biz
     }
@@ -59,8 +59,8 @@
             mutations.forEach(function (mutation) {
                 mutation.addedNodes.forEach(n => {
                     if (n.className == "notice") {
-                        console.log(n)
-                        console.log(n.innerText)
+                        //console.log(n)
+                        //console.log(n.innerText)
                         let split = n.innerText.split(/[.!]+/g);
                         //water
                         if(n.innerText.indexOf("water bowl has been refilled")!=-1 || n.innerText.indexOf("water bowl is already filled to the brim")!=-1){}
@@ -111,7 +111,7 @@
                                     if (url.startsWith("/dog/index/")) {
                                         ws.send("nightv1;"+eventlog.id+";"+eventlog.datetime+";"+eventlog.event+";"+eventlog.title)
                                     }
-                                },connectionSettleTime)
+                                },connectionSettleTime/4)
                             }
                         }
                         //lvlup
@@ -183,7 +183,7 @@
                                     if (url.startsWith("/dog/index/")) {
                                         ws.send("lvlupv1;"+lvlup["did"]+";"+lvlup["datetime"]+";"+lvlup["lvl"]+";"+lvlup["uxp"]+";"+lvlup["agi"]+";"+lvlup["cha"]+";"+lvlup["int"]+";"+lvlup["spd"]+";"+lvlup["stm"]+";"+lvlup["str"]+";"+lvlup["age"])
                                     }
-                                },connectionSettleTime)
+                                },connectionSettleTime/4)
                             }
                         }
                         //train
@@ -245,21 +245,9 @@
                                     if (url.startsWith("/dog/index/")) {
                                         ws.send("trainv1;"+training["did"]+";"+training["datetime"] +";"+training["lvl"]+";"+training["0"]+";"+training["1"]+";"+training["2"]+";"+training["3"])
                                     }
-                                },connectionSettleTime)
+                                },connectionSettleTime/4)
                             }
                         }
-
-                        //dog trained
-                        /*if (n.innerText.indexOf("lost") != -1 && n.innerText.indexOf("Energy") != -1) {
-                            
-                            
-                        }*/
-                        // dog leveled up
-                        /*else if (n.innerText.indexOf("has gone from Level") != -1) {
-                            
-                        }*/
-                        
-                        
                     }
                 });
             });
@@ -288,9 +276,14 @@
             }
 
             console.log(dog)
-            if (enableServerConnection){
+            if (enableServerConnection && url.startsWith("/dog/index/")){
                 setTimeout(function(){
-                    if (url.startsWith("/dog/index/")) {
+                    if(ws.readyState!=1){
+                        setTimeout(function(){
+                            ws.send("dogv1;"+dog.id+";"+dog.fullName+";"+dog.gender+";"+dog.breed+";"+dog.genes.join("|")+";"+dog.owner+";"+dog.generation+";"+dog.aptitude+";"+dog.dad+";"+dog.mom)
+                        },connectionSettleTime)
+                    }
+                    else{
                         ws.send("dogv1;"+dog.id+";"+dog.fullName+";"+dog.gender+";"+dog.breed+";"+dog.genes.join("|")+";"+dog.owner+";"+dog.generation+";"+dog.aptitude+";"+dog.dad+";"+dog.mom)
                     }
                 },connectionSettleTime)
