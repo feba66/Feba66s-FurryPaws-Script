@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Feba66's Script
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Collect loads of information
 // @author       feba66 aka fp: Felix#1631601 aka dc: feba66lap#7402
 // @downloadURL  https://github.com/feba66/Feba66s-FurryPaws-Script/raw/main/febas_network_script.user.js
@@ -59,27 +59,28 @@
             mutations.forEach(function (mutation) {
                 mutation.addedNodes.forEach(n => {
                     if (n.className == "notice") {
-                        //console.log(n)
-                        //console.log(n.innerText)
-                        let split = n.innerText.split(/[.!]+/g);
+                        let dogName = document.getElementsByClassName("info_table")[0].children[0].children[0].childNodes[1].textContent.replace("  "," ").replace(" (Change)","");
+                        let text = n.innerText.replaceAll(dogName,"[NAME]");
+                        //console.log(text)
+                        let split = text.split(/[.!]+/g);
                         //water
-                        if(n.innerText.indexOf("water bowl has been refilled")!=-1 || n.innerText.indexOf("water bowl is already filled to the brim")!=-1){}
+                        if(text.indexOf("water bowl has been refilled")!=-1 || text.indexOf("water bowl is already filled to the brim")!=-1){}
                         //food
-                        else if(n.innerText.indexOf("You give a serving of")!=-1){}
+                        else if(text.indexOf("You give a serving of")!=-1){}
                         //play
-                        else if(n.innerText.indexOf("happily returns the toy to you.")!=-1){}
+                        else if(text.indexOf("happily returns the toy to you.")!=-1){}
                         //clean
-                        else if(n.innerText.indexOf("kennel has been cleaned.")!=-1){}
+                        else if(text.indexOf("kennel has been cleaned.")!=-1){}
                         //groom
-                        else if(n.innerText.indexOf("Shiny and soft, your dog's coat is now in perfect condition!")!=-1){}
+                        else if(text.indexOf("Shiny and soft, your dog's coat is now in perfect condition!")!=-1){}
                         //compete
-                        else if(n.innerText.indexOf("The competition results will be posted tomorrow!")!=-1){
+                        else if(text.indexOf("The competition results will be posted tomorrow!")!=-1){
                             let ev = -2;
-                            if (n.innerText.indexOf("completely focused today") != -1) {
+                            if (text.indexOf("completely focused today") != -1) {
                                 console.log("focused night!")
                                 ev = 1;
                             }
-                            else if (n.innerText.indexOf("lacks focus today") != -1) {
+                            else if (text.indexOf("lacks focus today") != -1) {
                                 console.log("unfocused night!")
                                 ev = -1;
                             }
@@ -88,7 +89,7 @@
                                 ev = 0;
                             }
                             
-                            let comp = n.innerText.split("entered in")[1];
+                            let comp = text.split("entered in")[1];
                             comp = comp.substring(1,comp.indexOf(" competitions."))
                             comp = comp.substring(comp.indexOf(" ")+1)
                             comp = comp.substring(0,comp.lastIndexOf(" "))
@@ -115,7 +116,7 @@
                             }
                         }
                         //lvlup
-                        else if(n.innerText.indexOf("has gone from Level")!=-1){
+                        else if(text.indexOf("has gone from Level")!=-1){
                             let lvlup = { "did": id };
                             split.forEach(element => {
                                 let indx = element.indexOf("gained");
@@ -187,7 +188,7 @@
                             }
                         }
                         //train
-                        else if(n.innerText.indexOf("gained ")!=-1){
+                        else if(text.indexOf("gained ")!=-1){
                             let training = { "did": id, "lvl": document.getElementsByClassName("var_level")[0].innerText };
                             let i = 0;
                             split.forEach(element => {
