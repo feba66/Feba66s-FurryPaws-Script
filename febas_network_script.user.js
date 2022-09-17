@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Feba66's Script
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.5.1
 // @description  Collect loads of information
 // @author       feba66 aka fp: Felix#1631601 aka dc: feba66lap#7402
 // @downloadURL  https://github.com/feba66/Feba66s-FurryPaws-Script/raw/main/febas_network_script.user.js
@@ -150,6 +150,7 @@
                                             lvlup["str"] = arr[1]
                                             break;
                                         case "UXP":
+                                        case "Fame":
                                             lvlup["uxp"] = arr[1]
                                             break;
                                         default:
