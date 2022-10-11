@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Feba66's Script
 // @namespace    http://tampermonkey.net/
-// @version      1.5.1
+// @version      1.7
 // @description  Collect loads of information
 // @author       feba66 aka fp: Felix#1631601 aka dc: feba66lap#7402
 // @downloadURL  https://github.com/feba66/Feba66s-FurryPaws-Script/raw/main/febas_network_script.user.js
@@ -20,12 +20,35 @@
 
 (function () {
     'use strict';
+
+    //config
+    let serverUrl = "wss://feba66.de:7887";
     let enableServerConnection = true;
     let connectionSettleTime = 500;
-    if(enableServerConnection){
-        var ws = new WebSocket("wss://tkkg.dyndns.biz:7887")//tkkg.dyndns.biz
+    let connectionMaxTries = 10;
+
+    //dont touch after here
+    if (enableServerConnection) {
+        var ws = new WebSocket(serverUrl)
+        ws.onopen = function (e) {
+            console.log("Connected successfully to " + serverUrl)
+        }
     }
     //Structs
+    const msgType = {
+        dog: "dogv2",
+        night: "nightv2",
+        train: "trainv2",
+        lvlup: "lvlupv2"
+    }
+    class Message {
+        constructor(type, data, sender) {
+            this.type = type,
+                this.data = data,
+                this.sender = sender;
+        }
+    }
+
     const KennelDog = {
         id: -1,
         name: "",
@@ -47,6 +70,40 @@
         title: ""
     }
 
+    //funcs
+    function getPlayer() {
+        try {
+            let c = document.getElementById("fpaw_layout_column_3").children;
+            for (let i = 0; i < c.length; i++) {
+                if (c[i].className == "column_section centered" && c[i].innerHTML.indexOf("href") != -1) {
+                    let i1 = c[i].innerHTML.indexOf("owner/") + 6;
+                    let i2 = c[i].innerHTML.indexOf("</a>");
+                    let player = parseInt(c[i].innerHTML.substring(i1, i2).split("\">")[0]);
+                    console.log(player)
+                    return player;
+                }
+            }
+        } catch (error) {
+            console.log(error)
+        }
+        return -1
+    }
+    function sendMessage(msg, tries = 0) {
+        if (tries <= connectionMaxTries) {
+            setTimeout(function () {
+                if (ws.readyState != 1) {
+                    sendMessage(msg, tries + 1)
+                }
+                else {
+                    ws.send(msg)
+                }
+            }, connectionSettleTime)
+        }
+    }
+    function msgV2(type, data) {
+        sendMessage(JSON.stringify(new Message(type, data, getPlayer())))
+    }
+    //code
     let dogs = JSON.parse(localStorage.getItem("feba_dogs"));
     if (dogs == null) {
         dogs = {};
@@ -54,8 +111,8 @@
 
     let url = window.location.pathname;
     console.log(url);
-    
-    if (url.startsWith("/dog/index/")) {
+
+    if (url.startsWith("/dog/")) {
 
         let id = url.split("/")[3];
         //console.log(dogs[id]);
@@ -65,22 +122,22 @@
             mutations.forEach(function (mutation) {
                 mutation.addedNodes.forEach(n => {
                     if (n.className == "notice") {
-                        let dogName = document.getElementsByClassName("info_table")[0].children[0].children[0].childNodes[1].textContent.replace("  "," ").replace(" (Change)","");
-                        let text = n.innerText.replaceAll(dogName,"[NAME]");
+                        let dogName = document.getElementsByClassName("info_table")[0].children[0].children[0].childNodes[1].textContent.replace("  ", " ").replace(" (Change)", "");
+                        let text = n.innerText.replaceAll(dogName, "[NAME]");
                         //console.log(text)
                         let split = text.split(/[.!]+/g);
                         //water
-                        if(text.indexOf("water bowl has been refilled")!=-1 || text.indexOf("water bowl is already filled to the brim")!=-1){}
+                        if (text.indexOf("water bowl has been refilled") != -1 || text.indexOf("water bowl is already filled to the brim") != -1) { }
                         //food
-                        else if(text.indexOf("You give a serving of")!=-1){}
+                        else if (text.indexOf("You give a serving of") != -1) { }
                         //play
-                        else if(text.indexOf("happily returns the toy to you.")!=-1){}
+                        else if (text.indexOf("happily returns the toy to you.") != -1) { }
                         //clean
-                        else if(text.indexOf("kennel has been cleaned.")!=-1){}
+                        else if (text.indexOf("kennel has been cleaned.") != -1) { }
                         //groom
-                        else if(text.indexOf("Shiny and soft, your dog's coat is now in perfect condition!")!=-1){}
+                        else if (text.indexOf("Shiny and soft, your dog's coat is now in perfect condition!") != -1) { }
                         //compete
-                        else if(text.indexOf("The competition results will be posted tomorrow!")!=-1){
+                        else if (text.indexOf("The competition results will be posted tomorrow!") != -1) {
                             let ev = -2;
                             if (text.indexOf("completely focused today") != -1) {
                                 console.log("focused night!")
@@ -90,17 +147,17 @@
                                 console.log("unfocused night!")
                                 ev = -1;
                             }
-                            else{
+                            else {
                                 console.log("normal night!");
                                 ev = 0;
                             }
-                            
+
                             let comp = text.split("entered in")[1];
-                            comp = comp.substring(1,comp.indexOf(" competitions."))
-                            comp = comp.substring(comp.indexOf(" ")+1)
-                            comp = comp.substring(0,comp.lastIndexOf(" "))
+                            comp = comp.substring(1, comp.indexOf(" competitions."))
+                            comp = comp.substring(comp.indexOf(" ") + 1)
+                            comp = comp.substring(0, comp.lastIndexOf(" "))
                             //stupid way of fixing the titles
-                            let sport = comp.replace(" Hunting","").replace(" Musical","").replace(" Field","").replace(" Dock","").replace(" Earthdog","").replace(" Scent","").replace(" Water","")
+                            let sport = comp.replace(" Hunting", "").replace(" Musical", "").replace(" Field", "").replace(" Dock", "").replace(" Earthdog", "").replace(" Scent", "").replace(" Water", "")
                             let eventlog = Object.create(eventLog);
                             eventlog.id = id;
                             eventlog.datetime = Date.now()
@@ -113,23 +170,18 @@
                             eventLogs.push(eventlog);
                             console.log(eventlog);
                             localStorage.setItem("feba_eventlog", JSON.stringify(eventLogs));
-                            if (enableServerConnection){
-                                setTimeout(function(){
-                                    if (url.startsWith("/dog/index/")) {
-                                        ws.send("nightv1;"+eventlog.id+";"+eventlog.datetime+";"+eventlog.event+";"+eventlog.title)
-                                    }
-                                },connectionSettleTime/4)
+                            if (enableServerConnection) {
+                                msgV2(msgType.night, eventlog)
                             }
                         }
                         //lvlup
-                        else if(text.indexOf("has gone from Level")!=-1){
-                            let lvlup = { "did": id };
+                        else if (text.indexOf("has gone from Level") != -1) {
+                            let lvlup = { "did": parseInt(id), "datetime": Date.now(), "age": document.getElementsByClassName("info_table")[0].children[0].children[10].childNodes[1].textContent.split(" ")[0], "agi": 0, "cha": 0, "int": 0, "spd": 0, "stm": 0, "str": 0, "uxp": 0, "lvl": 0, "bonus": 0 };
                             split.forEach(element => {
                                 let indx = element.indexOf("gained");
                                 if (indx != -1) {
                                     let arr = element.substring(indx).split(" ");
                                     arr[1] = arr[1].replace("+", "");
-
                                     switch (arr[2]) {
                                         case "agility":
                                             lvlup["agi"] = arr[1]
@@ -174,55 +226,59 @@
                                         }
                                     }
                                 }
-                                
                             });
-                            var infotable = document.getElementsByClassName("info_table")[0].children[0]
-                            lvlup["age"] = infotable.children[10].childNodes[1].textContent.split(" ")[0];//
                             let lvlupEvents = JSON.parse(localStorage.getItem("feba_lvlupEvents"));
                             if (lvlupEvents == null) {
                                 lvlupEvents = [];
                             }
-                            lvlup["datetime"] = Date.now();
                             console.log(lvlup);
                             lvlupEvents.push(lvlup)
                             localStorage.setItem("feba_lvlupEvents", JSON.stringify(lvlupEvents));
-                            if (enableServerConnection){
-                                setTimeout(function(){
-                                    if (url.startsWith("/dog/index/")) {
-                                        ws.send("lvlupv1;"+lvlup["did"]+";"+lvlup["datetime"]+";"+lvlup["lvl"]+";"+lvlup["uxp"]+";"+lvlup["agi"]+";"+lvlup["cha"]+";"+lvlup["int"]+";"+lvlup["spd"]+";"+lvlup["stm"]+";"+lvlup["str"]+";"+lvlup["age"])
-                                    }
-                                },connectionSettleTime/4)
+                            if (enableServerConnection) {
+                                msgV2(msgType.lvlup, lvlup)
                             }
                         }
                         //train
-                        else if(text.indexOf("gained ")!=-1){
-                            let training = { "did": id, "lvl": document.getElementsByClassName("var_level")[0].innerText };
-                            let i = 0;
+                        else if (text.indexOf("gained ") != -1) {
+                            let training = {
+                                "did": id,"datetime": Date.now(), "lvl": document.getElementsByClassName("var_level")[0].innerText,
+                                "agi":  0, "cha":  0, "int":  0, "spd":  0, "stm":  0, "str":  0, 
+                                "agi2": 0, "cha2": 0, "int2": 0, "spd2": 0, "stm2": 0, "str2": 0, 
+                                "train": 0, "double": 0
+                            };
+                            let i = 0, j = 0;
                             split.forEach(element => {
                                 let oname = "";
                                 let arr = []
                                 let indx = element.indexOf("gained");
+                                let boo=false
                                 if (indx != -1) {
                                     arr = element.substring(indx).split(" ");
                                     arr[1] = arr[1].replace("+", "");
                                     switch (arr[2]) {
                                         case "Speed":
                                             oname = "spd";
+                                            boo = true;
                                             break;
                                         case "Stamina":
                                             oname = "stm";
+                                            boo = true;
                                             break;
                                         case "Strength":
                                             oname = "str";
+                                            boo = true;
                                             break;
                                         case "Agility":
                                             oname = "agi";
+                                            boo = true;
                                             break;
                                         case "Charisma":
                                             oname = "cha";
+                                            boo = true;
                                             break;
                                         case "Intelligence":
                                             oname = "int";
+                                            boo = true;
                                             break;
                                         case "Training":
                                             oname = "train";
@@ -233,27 +289,36 @@
                                             console.log(arr)
                                             break;
                                     }
+                                    if(boo){
+                                        if (j==0){
+                                            j=1;
+                                        }
+                                        else{
+                                            j=3
+                                        }
+                                    }
+                                    if (j > 1) {
+                                        training[oname + "2"] = arr[1];
+                                    } else {
+                                        training[oname] = arr[1];
+                                    }
                                 }
                                 else if (element.indexOf("twice as effective") != -1) {
-                                    arr[1] = "double"
+                                    arr[1] = "double";
+                                    training["double"] += 2*(1+j);
                                 }
-                                training[i] = oname+"|"+arr[1];
+
                                 i++;
                             });
                             let trainingEvents = JSON.parse(localStorage.getItem("feba_trainingEvents"));
                             if (trainingEvents == null) {
                                 trainingEvents = [];
                             }
-                            training["datetime"] = Date.now();
                             console.log(training);
                             trainingEvents.push(training)
                             localStorage.setItem("feba_trainingEvents", JSON.stringify(trainingEvents));
-                            if (enableServerConnection){
-                                setTimeout(function(){
-                                    if (url.startsWith("/dog/index/")) {
-                                        ws.send("trainv1;"+training["did"]+";"+training["datetime"] +";"+training["lvl"]+";"+training["0"]+";"+training["1"]+";"+training["2"]+";"+training["3"])
-                                    }
-                                },connectionSettleTime/4)
+                            if (enableServerConnection) {
+                                msgV2(msgType.train, training)
                             }
                         }
                     }
@@ -267,12 +332,12 @@
         if (dogs[id] == undefined || true) {
             let dog = Object.create(KennelDog);
             dog.id = id;//
-            
+
             dog.genes = infotable.children[16].childNodes[1].textContent.split(" ");//
-            dog.fullName = infotable.children[0].childNodes[1].textContent.replace(" (Change)", "").replaceAll(";","_:");//
-            dog.breed = infotable.children[6].childNodes[1].textContent;//
+            dog.fullName = infotable.children[0].childNodes[1].textContent.replace(" (Change)", "").replaceAll(";", "_:");//
+            dog.breed = infotable.children[6].childNodes[1].textContent.replace("Registered ", "");//
             dog.gender = infotable.children[7].childNodes[1].textContent;//
-            dog.owner = infotable.children[11].childNodes[1].textContent.split("#")[1].replace(")","");//
+            dog.owner = infotable.children[11].childNodes[1].textContent.split("#")[1].replace(")", "");//
             dog.age = infotable.children[10].childNodes[1].textContent.split(" ")[0];//
             dog.generation = infotable.children[13].childNodes[1].textContent;//
             dog.aptitude = infotable.children[17].childNodes[1].textContent.split(", ");//
@@ -282,19 +347,14 @@
                 dog.dad = tab_history.children[0].children[3].children[0].children[0].childNodes[1].textContent.split("#")[1];//
                 dog.mom = tab_history.children[1].children[3].children[0].children[0].childNodes[1].textContent.split("#")[1];//
             }
+            else {
+                dog.dad = -1
+                dog.mom = -1
+            }
 
             console.log(dog)
-            if (enableServerConnection && url.startsWith("/dog/index/")){
-                setTimeout(function(){
-                    if(ws.readyState!=1){
-                        setTimeout(function(){
-                            ws.send("dogv1;"+dog.id+";"+dog.fullName+";"+dog.gender+";"+dog.breed+";"+dog.genes.join("|")+";"+dog.owner+";"+dog.generation+";"+dog.aptitude+";"+dog.dad+";"+dog.mom)
-                        },connectionSettleTime)
-                    }
-                    else{
-                        ws.send("dogv1;"+dog.id+";"+dog.fullName+";"+dog.gender+";"+dog.breed+";"+dog.genes.join("|")+";"+dog.owner+";"+dog.generation+";"+dog.aptitude+";"+dog.dad+";"+dog.mom)
-                    }
-                },connectionSettleTime)
+            if (enableServerConnection && url.startsWith("/dog/index/")) {
+                msgV2(msgType.dog, dog)
             }
 
             let name = "|" + dog.genes[14]
@@ -319,12 +379,12 @@
             })
             //name += "|"+HH+"|"+Hh+"|"+hh
             var hquality = Math.round((HH / 24.0 + Hh / 24.0 * 0.66) * 100) / 100.0
-            name+="|"+hquality
+            name += "|" + hquality
 
             let a = dog.genes[15];
             let b = dog.genes[16];
-            name += "|" + a+"|" + b;
-            
+            name += "|" + a + "|" + b;
+
             console.log(name)
             dogs[dog.id] = dog;
         }
