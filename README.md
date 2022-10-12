@@ -4,11 +4,7 @@ This is a Tampermonkey/Greasemonkey/etc. script
 
 Create a new script -> paste this script -> save
 
-To enable the automatic uploading of collected dog data to my server you need to got to https://tkkg.dyndns.biz:7887/ and varying by browser do a few steps:
-Firefox: Extend -> Accept risk and continue
-Chrome: Extend -> Continue to tkkg.dyndns.biz (unsafe)
-
-this wont be an issue since im not sending any data back to the client, and the clients send no sensitive data to me
+since v1.7 the youre saving a step while installing
 
 go to a dogs page to automatically collect its data, lvlups, event nights and the stats.
 
