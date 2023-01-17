@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Feba66's Script
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.7.1
 // @description  Collect loads of information
 // @author       feba66 aka fp: Felix#1631601 aka dc: feba66lap#7402
 // @downloadURL  https://github.com/feba66/Feba66s-FurryPaws-Script/raw/main/febas_network_script.user.js
@@ -22,7 +22,7 @@
     'use strict';
 
     //config
-    let serverUrl = "wss://feba66.de:7887";
+    let serverUrl = "wss://wss.feba66.de";
     let enableServerConnection = true;
     let connectionSettleTime = 500;
     let connectionMaxTries = 10;
